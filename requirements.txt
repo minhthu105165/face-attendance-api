@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+sqlalchemy
+apscheduler
+numpy
+opencv-python
+uniface
+python-multipart
