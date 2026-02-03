@@ -39,6 +39,20 @@ def upsert_embedding(db: Session, student_id: str, emb: np.ndarray):
     db.refresh(row)
     return row
 
+
+def insert_embedding(db: Session, student_id: str, emb: np.ndarray, source: str = "enroll"):
+    emb = np.asarray(emb, dtype=np.float32).reshape(-1)
+    row = StudentEmbedding(
+        student_id=student_id,
+        dim=int(emb.shape[0]),
+        vector=emb.tobytes(),
+        source=source,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
 def load_gallery_for_class(db: Session, class_id: str):
     q = (
         db.query(Student, StudentEmbedding)
