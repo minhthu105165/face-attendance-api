@@ -4,7 +4,7 @@ import numpy as np
 
 from app.deps import get_db
 from app.core.uniface_engine import UniFaceEngine
-from app.db.crud import upsert_student, upsert_embedding
+from app.db.crud import upsert_class, upsert_student, upsert_embedding
 from app.utils.image import decode_upload_to_bgr
 
 router = APIRouter(prefix="/enroll", tags=["enroll"])
@@ -43,6 +43,7 @@ async def enroll(
     mean_emb = np.mean(np.stack(embs, axis=0), axis=0)
     mean_emb = mean_emb / (np.linalg.norm(mean_emb) + 1e-9)
 
+    upsert_class(db, class_id=class_id, name=class_id) # Ensure class exists
     upsert_student(db, student_id=student_id, class_id=class_id, name=student_name)
     upsert_embedding(db, student_id=student_id, emb=mean_emb)
 
