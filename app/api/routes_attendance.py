@@ -1,21 +1,24 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query
-from sqlalchemy.orm import Session
 import uuid
 import json
+from datetime import datetime, timezone, timedelta
 
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query
+from sqlalchemy.orm import Session
 
 from app.deps import get_db
 from app.core.uniface_engine import UniFaceEngine
-from app.core.matching import best_match
-from app.db.crud import list_sessions, get_session, load_gallery_for_class, save_attendance_session
+from app.db.crud import load_gallery_for_class, save_attendance_session, list_sessions, get_session
 from app.utils.image import decode_upload_to_bgr
-from datetime import datetime, timedelta, timezone
-from app.core.quality import blur_score, clamp_bbox_xyxy
+
+from app.core.quality import quality_gate
+from app.core.matching import best_match
+from app.core.attendance_logic import update_present_best, build_result
 
 
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 engine = UniFaceEngine()
+
 
 @router.post("/")
 async def attendance(
@@ -24,24 +27,31 @@ async def attendance(
     threshold: float = Form(0.60),
     db: Session = Depends(get_db),
 ):
+    # gallery: names lặp theo số embedding (vì enroll bạn đã lưu nhiều embeddings/1 student)
     names, gallery_embs = load_gallery_for_class(db, class_id)
     if len(names) == 0:
         raise HTTPException(400, f"No gallery embeddings for class_id={class_id}. Enroll students first.")
 
-    # ✅ đặt ngưỡng 1 lần
-    min_conf = 0.6
-    min_face = 60
-    min_blur = 80.0
+    # danh sách học sinh (unique) để tính absent/present
+    all_students = sorted(list(set(names)))
 
-    # ✅ debug cộng dồn cho cả request (tất cả ảnh)
+    # quality thresholds (tune)
+    min_conf = 0.6
+    min_face = 40
+    min_blur = 45.0
+
     dbg = {
+        "images_received": len(images),
+        "images_decoded": 0,
         "faces_detected": 0,
+        "faces_pass_quality": 0,
         "filtered_lowconf": 0,
         "filtered_small": 0,
         "filtered_blur": 0,
         "filtered_empty_crop": 0,
-        "images_received": len(images),
-        "images_decoded": 0,
+        "gallery_vectors": len(names),
+        "gallery_people": len(all_students),
+        "quality_thresholds": {"min_conf": min_conf, "min_face": min_face, "min_blur": min_blur},
     }
 
     present_best = {}
@@ -52,69 +62,43 @@ async def attendance(
         img = decode_upload_to_bgr(data)
         if img is None:
             continue
-
         dbg["images_decoded"] += 1
 
-        faces = engine.detect(img)
+        faces = engine.detect(img)  # multi-face detection
+        dbg["faces_detected"] += len(faces)
 
         for face in faces:
-            dbg["faces_detected"] += 1
-
-            conf = getattr(face, "confidence", None)
-            if conf is not None and conf < min_conf:
-                dbg["filtered_lowconf"] += 1
-                continue
-            
-            b = getattr(face, "bbox_xyxy", None)
-            if b is None:
-                b = getattr(face, "bbox", None)
-
-            if b is None:
-                emb = engine.embedding(img, face.landmarks)
-            else:
-                x1, y1, x2, y2 = b
-                H, W = img.shape[:2]
-                x1, y1, x2, y2 = clamp_bbox_xyxy(x1, y1, x2, y2, W, H)
-
-                w = x2 - x1
-                h = y2 - y1
-                if w < min_face or h < min_face:
+            ok, meta = quality_gate(img, face, min_conf=min_conf, min_face=min_face, min_blur=min_blur)
+            if not ok:
+                r = meta.get("reason")
+                if r == "lowconf":
+                    dbg["filtered_lowconf"] += 1
+                elif r == "small":
                     dbg["filtered_small"] += 1
-                    continue
-
-                face_crop = img[y1:y2, x1:x2]
-                if face_crop.size == 0:
-                    dbg["filtered_empty_crop"] += 1
-                    continue
-
-                if blur_score(face_crop) < min_blur:
+                elif r == "blur":
                     dbg["filtered_blur"] += 1
-                    continue
+                elif r == "empty_crop":
+                    dbg["filtered_empty_crop"] += 1
+                continue
 
-                emb = engine.embedding(img, face.landmarks)
+            dbg["faces_pass_quality"] += 1
 
+            emb = engine.embedding(img, face.landmarks)
             matched, score = best_match(emb, names, gallery_embs, threshold=threshold)
+
             if matched is None:
                 unknown_faces += 1
             else:
-                prev = present_best.get(matched, 0.0)
-                if score > prev:
-                    present_best[matched] = score
+                update_present_best(present_best, matched, score)
 
-    present = sorted(present_best.keys())
-    absent = sorted(list(set(names) - set(present)))
-
-    result = {
-        "class_id": class_id,
-        "count_total": len(names),
-        "count_present": len(present),
-        "present": [{"name": n, "score": present_best[n]} for n in present],
-        "absent": absent,
-        "unknown_faces_count": unknown_faces,
-        "threshold": threshold,
-        "debug": dbg,
-        "quality_thresholds": {"min_conf": min_conf, "min_face": min_face, "min_blur": min_blur},
-    }
+    result = build_result(
+        class_id=class_id,
+        all_names=all_students,
+        present_best=present_best,
+        unknown_faces=unknown_faces,
+        threshold=threshold,
+        dbg=dbg,
+    )
 
     session_id = str(uuid.uuid4())
     save_attendance_session(
