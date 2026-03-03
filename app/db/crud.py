@@ -63,7 +63,12 @@ def load_gallery_for_class(db: Session, class_id: str):
     names, embs = [], []
     for st, eb in q:
         names.append(st.name)
-        embs.append(np.frombuffer(eb.vector, dtype=np.float32))
+        vec = np.frombuffer(eb.vector, dtype=np.float32).copy()
+        # Re-normalize để đảm bảo cosine similarity chính xác
+        norm = np.linalg.norm(vec)
+        if norm > 1e-6:
+            vec = vec / norm
+        embs.append(vec)
 
     if not embs:
         return [], np.zeros((0, 0), dtype=np.float32)

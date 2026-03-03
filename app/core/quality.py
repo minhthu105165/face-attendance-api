@@ -16,15 +16,25 @@ def clamp_bbox_xyxy(x1, y1, x2, y2, W, H):
     return x1, y1, x2, y2
 
 
-def quality_gate(img_bgr: np.ndarray, face, min_conf=0.6, min_face=40, min_blur=60.0):
+def quality_gate(img_bgr: np.ndarray, face, min_conf=0.4, min_face=20, min_blur=3.0):
     """
     Return (ok: bool, meta: dict).
     meta gồm w,h,conf,blur để debug.
-    """
-    conf = getattr(face, "confidence", None)
-    if conf is not None and conf < min_conf:
-        return False, {"reason": "lowconf", "conf": float(conf)}
 
+    Lưu ý về min_blur:
+      blur_score = Laplacian variance trên face crop nhỏ.
+      Webcam/điện thoại thường cho giá trị 10-80.
+      Đặt quá cao (>30) sẽ loại hầu hết khuôn mặt bình thường.
+      Khuyên dùng: 8-15 cho webcam, 20-40 cho ảnh chất lượng cao.
+    """
+    # Lấy confidence: uniface có thể dùng .confidence hoặc .det_score
+    conf = getattr(face, "confidence", None)
+    if conf is None:
+        conf = getattr(face, "det_score", None)
+    if conf is not None and conf < min_conf:
+        return False, {"reason": "lowconf", "conf": float(conf), "min_conf": min_conf}
+
+    # Lấy bbox: uniface có thể dùng .bbox_xyxy hoặc .bbox
     b = getattr(face, "bbox_xyxy", None)
     if b is None:
         b = getattr(face, "bbox", None)
@@ -34,7 +44,7 @@ def quality_gate(img_bgr: np.ndarray, face, min_conf=0.6, min_face=40, min_blur=
 
     if hasattr(b, "tolist"):
         b = b.tolist()
-    x1, y1, x2, y2 = b
+    x1, y1, x2, y2 = b[:4]  # đảm bảo chỉ lấy 4 giá trị
     H, W = img_bgr.shape[:2]
     x1, y1, x2, y2 = clamp_bbox_xyxy(x1, y1, x2, y2, W, H)
 
@@ -49,6 +59,7 @@ def quality_gate(img_bgr: np.ndarray, face, min_conf=0.6, min_face=40, min_blur=
 
     bscore = blur_score(crop)
     if bscore < min_blur:
-        return False, {"reason": "blur", "blur": float(bscore), "w": w, "h": h}
+        return False, {"reason": "blur", "blur": float(bscore), "min_blur": min_blur, "w": w, "h": h,
+                        "conf": float(conf) if conf is not None else None}
 
     return True, {"reason": "ok", "w": w, "h": h, "blur": float(bscore), "conf": float(conf) if conf is not None else None}

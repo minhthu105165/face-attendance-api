@@ -1,5 +1,6 @@
 import uuid
 import json
+import logging
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query
@@ -14,7 +15,7 @@ from app.core.quality import quality_gate
 from app.core.matching import best_match
 from app.core.attendance_logic import update_present_best, build_result
 
-
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 engine = UniFaceEngine()
@@ -24,7 +25,7 @@ engine = UniFaceEngine()
 async def attendance(
     class_id: str = Form(...),
     images: list[UploadFile] = File(...),
-    threshold: float = Form(0.60),
+    threshold: float = Form(0.40),
     db: Session = Depends(get_db),
 ):
     # gallery: names lặp theo số embedding (vì enroll bạn đã lưu nhiều embeddings/1 student)
@@ -36,22 +37,28 @@ async def attendance(
     all_students = sorted(list(set(names)))
 
     # quality thresholds (tune)
-    min_conf = 0.6
-    min_face = 40
-    min_blur = 45.0
+    # LƯU Ý: min_blur là Laplacian variance trên crop nhỏ,
+    # webcam/điện thoại thường cho giá trị 5-80.
+    # Đặt quá cao sẽ lọc mất khuôn mặt hơi mờ (webcam, ánh sáng yếu).
+    min_conf = 0.4
+    min_face = 20
+    min_blur = 3.0   # rất thấp → chỉ reject ảnh cực kỳ mờ
 
     dbg = {
         "images_received": len(images),
         "images_decoded": 0,
         "faces_detected": 0,
         "faces_pass_quality": 0,
+        "faces_embedding_error": 0,
         "filtered_lowconf": 0,
         "filtered_small": 0,
         "filtered_blur": 0,
         "filtered_empty_crop": 0,
+        "filtered_no_landmarks": 0,
         "gallery_vectors": len(names),
         "gallery_people": len(all_students),
         "quality_thresholds": {"min_conf": min_conf, "min_face": min_face, "min_blur": min_blur},
+        "rejected_details": [],
     }
 
     present_best = {}
@@ -79,15 +86,32 @@ async def attendance(
                     dbg["filtered_blur"] += 1
                 elif r == "empty_crop":
                     dbg["filtered_empty_crop"] += 1
+                # Lưu chi tiết face bị reject để debug
+                dbg["rejected_details"].append(meta)
                 continue
 
             dbg["faces_pass_quality"] += 1
 
-            emb = engine.embedding(img, face.landmarks)
+            # Kiểm tra landmarks trước khi tính embedding
+            landmarks = getattr(face, "landmarks", None)
+            if landmarks is None:
+                dbg["filtered_no_landmarks"] += 1
+                dbg["rejected_details"].append({"reason": "no_landmarks"})
+                continue
+
+            try:
+                emb = engine.embedding(img, landmarks)
+            except Exception as e:
+                logger.warning(f"Embedding error: {e}")
+                dbg["faces_embedding_error"] += 1
+                continue
+
             matched, score = best_match(emb, names, gallery_embs, threshold=threshold)
 
             if matched is None:
                 unknown_faces += 1
+                # Lưu score cao nhất dù không match để debug
+                dbg.setdefault("unknown_best_scores", []).append(round(score, 4))
             else:
                 update_present_best(present_best, matched, score)
 
