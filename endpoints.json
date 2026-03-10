@@ -1,0 +1,172 @@
+{
+  "info": {
+    "_postman_id": "face-attendance-api-collection",
+    "name": "Face Attendance API",
+    "description": "Hệ thống điểm danh bằng khuôn mặt",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "paste-session-id-here",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/",
+          "host": ["{{base_url}}"],
+          "path": [""]
+        }
+      }
+    },
+    {
+      "name": "Đăng ký khuôn mặt",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/enroll/",
+          "host": ["{{base_url}}"],
+          "path": ["enroll", ""]
+        },
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "class_id",
+              "value": "10A1",
+              "type": "text",
+              "description": "Mã lớp học"
+            },
+            {
+              "key": "student_id",
+              "value": "HS001",
+              "type": "text",
+              "description": "Mã sinh viên (phải là duy nhất)"
+            },
+            {
+              "key": "student_name",
+              "value": "Nguyễn Văn A",
+              "type": "text",
+              "description": "Tên sinh viên"
+            },
+            {
+              "key": "images",
+              "type": "file",
+              "src": [],
+              "description": "Ảnh chân dung (chọn 1 hoặc nhiều file)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Điểm danh",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attendance/",
+          "host": ["{{base_url}}"],
+          "path": ["attendance", ""]
+        },
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "class_id",
+              "value": "10A1",
+              "type": "text",
+              "description": "Mã lớp học"
+            },
+            {
+              "key": "images",
+              "type": "file",
+              "src": [],
+              "description": "Ảnh chụp lớp học (chọn 1 hoặc nhiều file)"
+            },
+            {
+              "key": "threshold",
+              "value": "0.40",
+              "type": "text",
+              "description": "Ngưỡng nhận dạng (0.0 - 1.0, mặc định 0.40)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Danh sách phiên điểm danh",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attendance/sessions?class_id=10A1",
+          "host": ["{{base_url}}"],
+          "path": ["attendance", "sessions"],
+          "query": [
+            {
+              "key": "class_id",
+              "value": "10A1",
+              "description": "Mã lớp học"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Chi tiết phiên điểm danh",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attendance/sessions/{{session_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["attendance", "sessions", "{{session_id}}"]
+        }
+      }
+    },
+    {
+      "name": "Danh sách sinh viên trong lớp",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/students?class_id=10A1",
+          "host": ["{{base_url}}"],
+          "path": ["students"],
+          "query": [
+            {
+              "key": "class_id",
+              "value": "10A1",
+              "description": "Mã lớp học"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Danh sách lớp học",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/classes",
+          "host": ["{{base_url}}"],
+          "path": ["classes"]
+        }
+      }
+    }
+  ]
+}
