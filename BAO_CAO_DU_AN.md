@@ -1,6 +1,7 @@
 # BÁO CÁO DỰ ÁN: HỆ THỐNG ĐIỂM DANH BẰNG KHUÔN MẶT
 
 ## 1. Tổng quan hệ thống
+chay du an python -m uvicorn app.main:app --reload
 
 ### 1.1 Mục tiêu
 Xây dựng hệ thống điểm danh tự động bằng nhận dạng khuôn mặt, cho phép:

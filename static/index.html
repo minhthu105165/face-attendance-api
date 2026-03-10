@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hệ thống Điểm danh Khuôn mặt</title>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f4f8;
+            color: #1a202c;
+            min-height: 100vh;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: #fff;
+            padding: 18px 32px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        }
+
+        header .logo {
+            font-size: 2rem;
+        }
+
+        header h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        header p {
+            font-size: 0.82rem;
+            opacity: .8;
+            margin-top: 2px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 32px auto;
+            padding: 0 16px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 0;
+            border: none;
+            border-radius: 10px 10px 0 0;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: #cbd5e1;
+            color: #475569;
+            transition: background .2s, color .2s;
+        }
+
+        .tab-btn.active {
+            background: #fff;
+            color: #2563eb;
+            box-shadow: 0 -2px 6px rgba(0, 0, 0, .08);
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: #e2e8f0;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 0 0 14px 14px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, .08);
+            padding: 28px 32px 32px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Form */
+        .form-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+            min-width: 180px;
+        }
+
+        label {
+            font-size: .85rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-size: .93rem;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px #dbeafe;
+        }
+
+        .section-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #1e40af;
+            margin: 22px 0 14px;
+            border-left: 4px solid #2563eb;
+            padding-left: 10px;
+        }
+
+        /* Image source switch */
+        .source-switch {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .source-btn {
+            padding: 7px 18px;
+            border-radius: 20px;
+            border: 2px solid #2563eb;
+            background: transparent;
+            color: #2563eb;
+            font-size: .85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .source-btn.active {
+            background: #2563eb;
+            color: #fff;
+        }
+
+        /* Drop zone */
+        .drop-zone {
+            border: 2px dashed #93c5fd;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            background: #eff6ff;
+            cursor: pointer;
+            transition: border-color .2s, background .2s;
+            position: relative;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: #2563eb;
+            background: #dbeafe;
+        }
+
+        .drop-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .drop-zone .dz-icon {
+            font-size: 2.5rem;
+        }
+
+        .drop-zone p {
+            color: #4b5563;
+            font-size: .88rem;
+            margin-top: 6px;
+        }
+
+        .drop-zone strong {
+            color: #2563eb;
+        }
+
+        /* Thumbnails */
+        .thumb-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .thumb-grid img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #bfdbfe;
+        }
+
+        /* Webcam */
+        .webcam-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        video,
+        canvas {
+            border-radius: 12px;
+            border: 2px solid #bfdbfe;
+            background: #000;
+            max-width: 100%;
+        }
+
+        .webcam-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .snap-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .snap-list img {
+            width: 90px;
+            height: 70px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #bfdbfe;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 11px 26px;
+            border-radius: 10px;
+            border: none;
+            font-size: .95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .2s, transform .1s, box-shadow .2s;
+        }
+
+        .btn:active {
+            transform: scale(.97);
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, .35);
+        }
+
+        .btn-success {
+            background: #16a34a;
+            color: #fff;
+        }
+
+        .btn-success:hover {
+            background: #15803d;
+            box-shadow: 0 4px 12px rgba(22, 163, 74, .35);
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-gray {
+            background: #6b7280;
+            color: #fff;
+        }
+
+        .btn-gray:hover {
+            background: #4b5563;
+        }
+
+        .btn:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 22px;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255, 255, 255, .4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Result */
+        .result-box {
+            margin-top: 22px;
+            border-radius: 12px;
+            padding: 18px 22px;
+            font-size: .9rem;
+        }
+
+        .result-success {
+            background: #f0fdf4;
+            border: 1.5px solid #86efac;
+        }
+
+        .result-error {
+            background: #fef2f2;
+            border: 1.5px solid #fca5a5;
+        }
+
+        .result-box h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .attendance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+            font-size: .88rem;
+        }
+
+        .attendance-table th {
+            background: #eff6ff;
+            color: #1e40af;
+            padding: 9px 12px;
+            text-align: left;
+            border-bottom: 2px solid #bfdbfe;
+        }
+
+        .attendance-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .attendance-table tr:hover td {
+            background: #f8fafc;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: .78rem;
+            font-weight: 700;
+            letter-spacing: .3px;
+        }
+
+        .badge-present {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .badge-absent {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .stat-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .stat {
+            background: #eff6ff;
+            border-radius: 8px;
+            padding: 10px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 90px;
+        }
+
+        .stat .num {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #2563eb;
+        }
+
+        .stat .lbl {
+            font-size: .73rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            background: #1e293b;
+            color: #fff;
+            border-radius: 10px;
+            padding: 13px 22px;
+            font-size: .88rem;
+            font-weight: 500;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, .22);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity .3s, transform .3s;
+            z-index: 9999;
+            pointer-events: none;
+            max-width: 340px;
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 600px) {
+            .card {
+                padding: 18px 14px 22px;
+            }
+
+            .form-row {
+                flex-direction: column;
+            }
+
+            .btn-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <span class="logo">📷</span>
+        <div>
+            <h1>Hệ thống Điểm danh Khuôn mặt</h1>
+            <p>Face Attendance System — API</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="enroll">👤 Đăng ký khuôn mặt</button>
+            <button class="tab-btn" data-tab="attendance">✅ Điểm danh</button>
+        </div>
+
+        <div class="card">
+            <!-- ==================== ENROLL TAB ==================== -->
+            <div class="tab-panel active" id="tab-enroll">
+                <div class="section-title">Thông tin sinh viên</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="e-class">Mã lớp (class_id) *</label>
+                        <input id="e-class" type="text" placeholder="VD: CS101" />
+                    </div>
+                    <div class="form-group">
+                        <label for="e-sid">Mã sinh viên (student_id) *</label>
+                        <input id="e-sid" type="text" placeholder="VD: SV001" />
+                    </div>
+                    <div class="form-group">
+                        <label for="e-name">Họ tên sinh viên *</label>
+                        <input id="e-name" type="text" placeholder="VD: Nguyễn Minh Thư" />
+                    </div>
+                </div>
+
+                <div class="section-title">Ảnh khuôn mặt</div>
+                <div class="source-switch">
+                    <button class="source-btn active" data-panel="e-file-panel" data-group="enroll-src"
+                        onclick="switchSource(this,'e-file-panel','enroll')">📁 Tải ảnh lên</button>
+                    <button class="source-btn" data-panel="e-cam-panel" data-group="enroll-src"
+                        onclick="switchSource(this,'e-cam-panel','enroll')">📷 Chụp webcam</button>
+                </div>
+
+                <!-- File upload -->
+                <div id="e-file-panel">
+                    <div class="drop-zone" id="e-dropzone">
+                        <input type="file" id="e-files" accept="image/*" multiple
+                            onchange="previewFiles('e-files','e-thumbs')" />
+                        <div class="dz-icon">🖼️</div>
+                        <p>Kéo thả ảnh vào đây hoặc <strong>click để chọn</strong></p>
+                        <p style="font-size:.78rem;color:#94a3b8;margin-top:4px;">Hỗ trợ JPG, PNG, WEBP — nhiều ảnh để
+                            tăng độ chính xác</p>
+                    </div>
+                    <div class="thumb-grid" id="e-thumbs"></div>
+                </div>
+
+                <!-- Webcam -->
+                <div id="e-cam-panel" style="display:none">
+                    <div class="webcam-area">
+                        <video id="e-video" width="480" height="360" autoplay playsinline></video>
+                        <canvas id="e-canvas" width="480" height="360" style="display:none"></canvas>
+                        <div class="webcam-controls">
+                            <button class="btn btn-primary" onclick="startCam('e-video','e-start','e-stop')"
+                                id="e-start">▶ Bật
+                                camera</button>
+                            <button class="btn btn-success" onclick="snapPhoto('e-video','e-canvas','e-snaps','enroll')"
+                                disabled id="e-snap">📸 Chụp ảnh</button>
+                            <button class="btn btn-gray" onclick="stopCam('e-video','e-start','e-stop')" disabled
+                                id="e-stop">⏹ Tắt camera</button>
+                            <button class="btn btn-danger" onclick="clearSnaps('enroll')" id="e-clear-btn">🗑 Xóa ảnh đã
+                                chụp</button>
+                        </div>
+                        <div class="snap-list" id="e-snaps"></div>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button class="btn btn-success" id="e-submit" onclick="submitEnroll()">
+                        <span>💾 Đăng ký</span>
+                    </button>
+                    <button class="btn btn-gray" onclick="resetEnroll()">↺ Làm lại</button>
+                </div>
+                <div id="e-result"></div>
+            </div>
+
+            <!-- ==================== ATTENDANCE TAB ==================== -->
+            <div class="tab-panel" id="tab-attendance">
+                <div class="section-title">Thông tin lớp học</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="a-class">Mã lớp (class_id) *</label>
+                        <input id="a-class" type="text" placeholder="VD: CS101" />
+                    </div>
+                    <div class="form-group">
+                        <label for="a-threshold">Ngưỡng nhận diện (threshold)
+                            <span id="threshold-hint"
+                                style="font-weight:400;color:#6b7280;font-size:.78rem;margin-left:4px;">— khuyên dùng:
+                                0.35 – 0.45</span>
+                        </label>
+                        <input id="a-threshold" type="number" min="0.1" max="0.6" step="0.05" value="0.40" />
+                        <span id="threshold-warn" style="display:none;font-size:.78rem;color:#d97706;margin-top:2px;">
+                            ⚠️ ArcFace score thường &lt; 0.55 — ngưỡng quá cao sẽ không nhận ra ai
+                        </span>
+                    </div>
+                </div>
+
+                <div class="section-title">Ảnh điểm danh</div>
+                <div class="source-switch">
+                    <button class="source-btn active" data-panel="a-file-panel" data-group="attend-src"
+                        onclick="switchSource(this,'a-file-panel','attend')">📁 Tải ảnh lên</button>
+                    <button class="source-btn" data-panel="a-cam-panel" data-group="attend-src"
+                        onclick="switchSource(this,'a-cam-panel','attend')">📷 Chụp webcam</button>
+                </div>
+
+                <!-- File upload -->
+                <div id="a-file-panel">
+                    <div class="drop-zone">
+                        <input type="file" id="a-files" accept="image/*" multiple
+                            onchange="previewFiles('a-files','a-thumbs')" />
+                        <div class="dz-icon">🖼️</div>
+                        <p>Kéo thả ảnh vào đây hoặc <strong>click để chọn</strong></p>
+                        <p style="font-size:.78rem;color:#94a3b8;margin-top:4px;">Có thể upload nhiều ảnh / chụp nhiều
+                            góc</p>
+                    </div>
+                    <div class="thumb-grid" id="a-thumbs"></div>
+                </div>
+
+                <!-- Webcam -->
+                <div id="a-cam-panel" style="display:none">
+                    <div class="webcam-area">
+                        <video id="a-video" width="480" height="360" autoplay playsinline></video>
+                        <canvas id="a-canvas" width="480" height="360" style="display:none"></canvas>
+                        <div class="webcam-controls">
+                            <button class="btn btn-primary" onclick="startCam('a-video','a-start','a-stop')"
+                                id="a-start">▶ Bật camera</button>
+                            <button class="btn btn-success" onclick="snapPhoto('a-video','a-canvas','a-snaps','attend')"
+                                disabled id="a-snap">📸 Chụp ảnh</button>
+                            <button class="btn btn-gray" onclick="stopCam('a-video','a-start','a-stop')" disabled
+                                id="a-stop">⏹ Tắt camera</button>
+                            <button class="btn btn-danger" onclick="clearSnaps('attend')" id="a-clear-btn">🗑 Xóa ảnh đã
+                                chụp</button>
+                        </div>
+                        <div class="snap-list" id="a-snaps"></div>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button class="btn btn-primary" id="a-submit" onclick="submitAttendance()">
+                        <span>🔍 Điểm danh</span>
+                    </button>
+                    <button class="btn btn-gray" onclick="resetAttendance()">↺ Làm lại</button>
+                </div>
+                <div id="a-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        // ===== STATE =====
+        const state = {
+            enroll: { camStream: null, snaps: [] },   // snaps: Array of Blob
+            attend: { camStream: null, snaps: [] },
+        };
+
+        // ===== TABS =====
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // ===== SOURCE SWITCH =====
+        function switchSource(btn, panelId, group) {
+            document.querySelectorAll(`.source-btn`).forEach(b => {
+                if (b.dataset.group === group) b.classList.remove('active');
+            });
+            btn.classList.add('active');
+            const panels = { enroll: ['e-file-panel', 'e-cam-panel'], attend: ['a-file-panel', 'a-cam-panel'] };
+            panels[group].forEach(id => document.getElementById(id).style.display = (id === panelId ? '' : 'none'));
+            // Stop cam if switching away
+            const videoId = group === 'enroll' ? 'e-video' : 'a-video';
+            if (panelId !== (group === 'enroll' ? 'e-cam-panel' : 'a-cam-panel')) {
+                stopCam(videoId, group === 'enroll' ? 'e-start' : 'a-start', group === 'enroll' ? 'e-stop' : 'a-stop');
+            }
+        }
+
+        // ===== FILE PREVIEW =====
+        function previewFiles(inputId, thumbsId) {
+            const input = document.getElementById(inputId);
+            const container = document.getElementById(thumbsId);
+            container.innerHTML = '';
+            const files = Array.from(input.files);
+            files.forEach(f => {
+                const url = URL.createObjectURL(f);
+                const img = document.createElement('img');
+                img.src = url;
+                img.onload = () => URL.revokeObjectURL(url);
+                container.appendChild(img);
+            });
+        }
+
+        // ===== WEBCAM =====
+        async function startCam(videoId, startBtnId, stopBtnId) {
+            const group = videoId === 'e-video' ? 'enroll' : 'attend';
+            const snapId = group === 'enroll' ? 'e-snap' : 'a-snap';
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+                state[group].camStream = stream;
+                const video = document.getElementById(videoId);
+                video.srcObject = stream;
+                document.getElementById(startBtnId || (group === 'enroll' ? 'e-start' : 'a-start')).disabled = true;
+                document.getElementById(stopBtnId || (group === 'enroll' ? 'e-stop' : 'a-stop')).disabled = false;
+                document.getElementById(snapId).disabled = false;
+            } catch (e) {
+                showToast('❌ Không thể truy cập webcam: ' + e.message, true);
+            }
+        }
+
+        function stopCam(videoId, startBtnId, stopBtnId) {
+            const group = videoId === 'e-video' ? 'enroll' : 'attend';
+            const snapId = group === 'enroll' ? 'e-snap' : 'a-snap';
+            if (state[group].camStream) {
+                state[group].camStream.getTracks().forEach(t => t.stop());
+                state[group].camStream = null;
+            }
+            const video = document.getElementById(videoId);
+            video.srcObject = null;
+            document.getElementById(startBtnId || (group === 'enroll' ? 'e-start' : 'a-start')).disabled = false;
+            document.getElementById(stopBtnId || (group === 'enroll' ? 'e-stop' : 'a-stop')).disabled = true;
+            document.getElementById(snapId).disabled = true;
+        }
+
+        function snapPhoto(videoId, canvasId, snapsId, group) {
+            const video = document.getElementById(videoId);
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            canvas.width = video.videoWidth || 480;
+            canvas.height = video.videoHeight || 360;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(blob => {
+                if (!blob) return;
+                state[group].snaps.push(blob);
+                const url = URL.createObjectURL(blob);
+                const container = document.getElementById(snapsId);
+                const img = document.createElement('img');
+                img.src = url;
+                img.title = `Ảnh #${state[group].snaps.length}`;
+                img.onload = () => URL.revokeObjectURL(url);
+                container.appendChild(img);
+                showToast(`📸 Đã chụp ảnh #${state[group].snaps.length}`);
+            }, 'image/jpeg', 0.9);
+        }
+
+        function clearSnaps(group) {
+            state[group].snaps = [];
+            const id = group === 'enroll' ? 'e-snaps' : 'a-snaps';
+            document.getElementById(id).innerHTML = '';
+            showToast('🗑 Đã xóa ảnh đã chụp');
+        }
+
+        // ===== ENROLL =====
+        async function submitEnroll() {
+            const classId = document.getElementById('e-class').value.trim();
+            const sid = document.getElementById('e-sid').value.trim();
+            const sname = document.getElementById('e-name').value.trim();
+
+            if (!classId || !sid || !sname) {
+                showToast('⚠️ Vui lòng điền đầy đủ thông tin sinh viên', true); return;
+            }
+
+            // collect images
+            const fileInput = document.getElementById('e-files');
+            const fileMode = document.getElementById('e-file-panel').style.display !== 'none';
+            let images = [];
+            if (fileMode) {
+                images = Array.from(fileInput.files);
+            } else {
+                images = [...state.enroll.snaps];
+            }
+
+            if (images.length === 0) {
+                showToast('⚠️ Chưa có ảnh nào để đăng ký', true); return;
+            }
+
+            const btn = document.getElementById('e-submit');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Đang đăng ký…';
+
+            const fd = new FormData();
+            fd.append('class_id', classId);
+            fd.append('student_id', sid);
+            fd.append('student_name', sname);
+            images.forEach((img, i) => {
+                fd.append('images', img, fileMode ? img.name : `snap_${i + 1}.jpg`);
+            });
+
+            try {
+                const res = await fetch('/enroll/', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('e-result').innerHTML = `
+        <div class="result-box result-success">
+          <h3>✅ Đăng ký thành công!</h3>
+          <p>Sinh viên: <strong>${escHtml(data.student_name)}</strong> (${escHtml(data.student_id)})</p>
+          <p>Lớp: <strong>${escHtml(classId)}</strong></p>
+          <p>Số ảnh sử dụng: <strong>${data.images_used}</strong> &nbsp;|&nbsp; Embeddings đã lưu: <strong>${data.embeddings_saved}</strong></p>
+        </div>`;
+                    showToast('✅ Đăng ký khuôn mặt thành công!');
+                } else {
+                    const msg = data.detail || JSON.stringify(data);
+                    document.getElementById('e-result').innerHTML = `
+        <div class="result-box result-error">
+          <h3>❌ Đăng ký thất bại</h3>
+          <p>${escHtml(msg)}</p>
+        </div>`;
+                    showToast('❌ ' + msg, true);
+                }
+            } catch (e) {
+                document.getElementById('e-result').innerHTML = `
+      <div class="result-box result-error"><h3>❌ Lỗi kết nối</h3><p>${escHtml(e.message)}</p></div>`;
+                showToast('❌ Lỗi kết nối: ' + e.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>💾 Đăng ký</span>';
+            }
+        }
+
+        function resetEnroll() {
+            document.getElementById('e-class').value = '';
+            document.getElementById('e-sid').value = '';
+            document.getElementById('e-name').value = '';
+            document.getElementById('e-files').value = '';
+            document.getElementById('e-thumbs').innerHTML = '';
+            clearSnaps('enroll');
+            document.getElementById('e-result').innerHTML = '';
+        }
+
+        // ===== ATTENDANCE =====
+        async function submitAttendance() {
+            const classId = document.getElementById('a-class').value.trim();
+            const threshold = parseFloat(document.getElementById('a-threshold').value) || 0.40;
+
+            if (!classId) {
+                showToast('⚠️ Vui lòng nhập mã lớp', true); return;
+            }
+
+            const fileInput = document.getElementById('a-files');
+            const fileMode = document.getElementById('a-file-panel').style.display !== 'none';
+            let images = [];
+            if (fileMode) {
+                images = Array.from(fileInput.files);
+            } else {
+                images = [...state.attend.snaps];
+            }
+
+            if (images.length === 0) {
+                showToast('⚠️ Chưa có ảnh nào để điểm danh', true); return;
+            }
+
+            const btn = document.getElementById('a-submit');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Đang nhận diện…';
+
+            const fd = new FormData();
+            fd.append('class_id', classId);
+            fd.append('threshold', threshold);
+            images.forEach((img, i) => {
+                fd.append('images', img, fileMode ? img.name : `snap_${i + 1}.jpg`);
+            });
+
+            try {
+                const res = await fetch('/attendance/', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (res.ok) {
+                    renderAttendanceResult(data, classId);
+                    showToast('✅ Điểm danh hoàn tất!');
+                } else {
+                    const msg = data.detail || JSON.stringify(data);
+                    document.getElementById('a-result').innerHTML = `
+        <div class="result-box result-error">
+          <h3>❌ Điểm danh thất bại</h3><p>${escHtml(msg)}</p>
+        </div>`;
+                    showToast('❌ ' + msg, true);
+                }
+            } catch (e) {
+                document.getElementById('a-result').innerHTML = `
+      <div class="result-box result-error"><h3>❌ Lỗi kết nối</h3><p>${escHtml(e.message)}</p></div>`;
+                showToast('❌ Lỗi kết nối: ' + e.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>🔍 Điểm danh</span>';
+            }
+        }
+
+        function renderAttendanceResult(data, classId) {
+            const present = (data.present || []).length;
+            const absent = (data.absent || []).length;
+            const total = present + absent;
+            const unknown = data.unknown_faces_count ?? data.unknown_faces ?? 0;
+            const sid = data.session_id ? `<p style="font-size:.78rem;color:#94a3b8;margin-top:6px;">Session ID: ${escHtml(data.session_id)}</p>` : '';
+
+            let rows = '';
+            // present = [{name, score}], absent = [string]
+            const all = [
+                ...(data.present || []).map(n => ({ name: typeof n === 'object' ? n.name : n, present: true, score: typeof n === 'object' ? n.score : (data.scores?.[n]) })),
+                ...(data.absent || []).map(n => ({ name: typeof n === 'object' ? n.name : n, present: false, score: null })),
+            ];
+            all.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+            all.forEach((s, i) => {
+                const badge = s.present
+                    ? `<span class="badge badge-present">✓ Có mặt</span>`
+                    : `<span class="badge badge-absent">✗ Vắng mặt</span>`;
+                const score = s.score != null ? (s.score * 100).toFixed(1) + '%' : '—';
+                rows += `<tr>
+      <td>${i + 1}</td>
+      <td>${escHtml(s.name)}</td>
+      <td>${badge}</td>
+      <td>${score}</td>
+    </tr>`;
+            });
+
+            document.getElementById('a-result').innerHTML = `
+    <div class="result-box result-success">
+      <h3>📋 Kết quả điểm danh — Lớp ${escHtml(classId)}</h3>
+      <div class="stat-row">
+        <div class="stat"><span class="num">${total}</span><span class="lbl">Tổng SV</span></div>
+        <div class="stat"><span class="num" style="color:#16a34a">${present}</span><span class="lbl">Có mặt</span></div>
+        <div class="stat"><span class="num" style="color:#dc2626">${absent}</span><span class="lbl">Vắng mặt</span></div>
+        <div class="stat"><span class="num" style="color:#d97706">${unknown}</span><span class="lbl">Khuôn mặt lạ</span></div>
+      </div>
+      <table class="attendance-table">
+        <thead><tr><th>#</th><th>Sinh viên</th><th>Trạng thái</th><th>Độ khớp</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${sid}
+    </div>`;
+        }
+
+        function resetAttendance() {
+            document.getElementById('a-class').value = '';
+            document.getElementById('a-threshold').value = '0.40';
+            document.getElementById('a-files').value = '';
+            document.getElementById('a-thumbs').innerHTML = '';
+            clearSnaps('attend');
+            document.getElementById('a-result').innerHTML = '';
+        }
+
+        // ===== HELPERS =====
+        function escHtml(str) {
+            if (str == null) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        let toastTimer;
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.background = isError ? '#991b1b' : '#1e293b';
+            t.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // Threshold warning
+        document.getElementById('a-threshold').addEventListener('input', function () {
+            const warn = document.getElementById('threshold-warn');
+            warn.style.display = parseFloat(this.value) > 0.50 ? '' : 'none';
+        });
+
+        // Drag & drop highlight
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+            zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+            zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); });
+        });
+    </script>
+</body>
+
+</html>
